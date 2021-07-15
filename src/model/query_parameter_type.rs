@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct QueryParameterType {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub array_type: Option<QueryParameterType>,
+    pub array_type: Option<Box<QueryParameterType>>,
     /// [Optional] The types of the fields of this struct, in order, if this is a struct.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub struct_types: Option<Vec<QueryParameterTypeStructTypes>>,
