@@ -11,6 +11,7 @@ use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::str::FromStr;
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -359,6 +360,16 @@ impl ResultSet {
             } else if field.r#type == FieldType::Record {
                 let c_row: TableRow = serde_json::from_value(r.to_owned()).map_err(BQError::SerializationError)?;
                 data.insert(field.name.to_owned(), ResultSet::parse_struct_value(&field, &c_row)?);
+            } else if field.r#type == FieldType::Integer
+                || field.r#type == FieldType::Int64
+                || field.r#type == FieldType::Float
+                || field.r#type == FieldType::Float64
+                || field.r#type == FieldType::Numeric
+                || field.r#type == FieldType::Bignumeric
+            {
+                let value = serde_json::Number::from_str(r.as_str().unwrap_or_default())
+                    .map_err(BQError::SerializationError)?;
+                data.insert(field.name.to_owned(), serde_json::Value::Number(value));
             } else {
                 data.insert(field.name.to_owned(), r);
             }
