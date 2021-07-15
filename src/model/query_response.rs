@@ -7,6 +7,10 @@ use crate::model::table_schema::TableSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use crate::model::table_field_schema::TableFieldSchema;
+use crate::model::table_cell::TableCell;
+use crate::model::field_type::FieldType;
+use chrono::{DateTime, Utc, TimeZone};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -293,6 +297,172 @@ impl ResultSet {
                 col_name: col_name.into(),
             }),
             Some(col_pos) => self.get_json_value(*col_pos),
+        }
+    }
+
+    pub fn get_struct_value(&self, col_index: usize) -> Result<Option<serde_json::Value>, BQError> {
+        let json_value = self.get_json_value(col_index)?;
+        match json_value {
+            None => Ok(None),
+            Some(json_value) => match json_value.to_owned() {
+                serde_json::Value::Object(_value) => {
+                    let table_schema = self.query_response.schema.as_ref().expect("Expecting a schema");
+                    let fields_schema = table_schema.fields.as_ref().and_then(|f| f.get(col_index)).expect("Expecting schema fields");
+
+                    let row: TableRow = serde_json::from_value(json_value)
+                        .map_err(BQError::SerializationError)?;
+                    Ok(Some(ResultSet::parse_struct_value(fields_schema, &row)?))
+                }
+                _ => Err(BQError::InvalidColumnType {
+                    col_index,
+                    col_type: ResultSet::json_type(&json_value),
+                    type_requested: "Struct".into(),
+                }),
+            },
+        }
+    }
+
+    fn parse_struct_value(field: &TableFieldSchema, row: &TableRow) -> Result<serde_json::Value, BQError> {
+        let fields_schema = field.fields.as_ref().expect("Expecting a schema");
+
+        let mut data = serde_json::Map::new();
+
+        for field in fields_schema {
+            if row.columns.is_none() {
+                data.insert(
+                    field.name.to_owned(),
+                    serde_json::Value::Null,
+                );
+                continue
+            }
+
+            let r: serde_json::Value = row.columns
+                .as_ref()
+                .and_then(|cols| cols.get(0))
+                .and_then(|col| col.value.clone())
+                .unwrap_or_default();
+
+            if r.is_null() {
+                data.insert(
+                    field.name.to_owned(),
+                    serde_json::Value::Null,
+                );
+                continue
+            }
+
+            if field.mode.to_owned().unwrap_or_default().eq("REPEATED") {
+                let cells: Vec<TableCell> = serde_json::from_value(r.to_owned())
+                    .map_err(BQError::SerializationError)?;
+
+                data.insert(
+                    field.name.to_owned(),
+                    serde_json::Value::Array(ResultSet::parse_array_value(&field, cells)?),
+                );
+            } else if field.r#type == FieldType::Record {
+                let c_row: TableRow = serde_json::from_value(r.to_owned())
+                    .map_err(BQError::SerializationError)?;
+                data.insert(
+                    field.name.to_owned(),
+                    ResultSet::parse_struct_value(&field, &c_row)?,
+                );
+            } else {
+                data.insert(
+                    field.name.to_owned(),
+                    r,
+                );
+            }
+        }
+
+        Ok(serde_json::Value::Object(data))
+    }
+
+    pub fn get_struct_value_by_name(&self, col_name: &str) -> Result<Option<serde_json::Value>, BQError> {
+        let col_pos = self.fields.get(col_name);
+        match col_pos {
+            None => Err(BQError::InvalidColumnName {
+                col_name: col_name.into(),
+            }),
+            Some(col_pos) => self.get_struct_value(*col_pos),
+        }
+    }
+
+    fn parse_array_value(field: &TableFieldSchema, cells: Vec<TableCell>) -> Result<Vec<serde_json::Value>, BQError> {
+        let record_schema = if field.r#type == FieldType::Record {
+            field.fields.as_ref().and_then(|f| f.get(0))
+        } else {
+            None
+        };
+
+        let mut data = vec![];
+        for cell in cells {
+            if let Some(v) = cell.value {
+                if let Some(record_schema) = record_schema {
+                    let row: TableRow = serde_json::from_value(v.to_owned())
+                        .map_err(BQError::SerializationError)?;
+
+                    data.push(ResultSet::parse_struct_value(record_schema, &row)?);
+                } else {
+                    data.push(v)
+                }
+            } else {
+                data.push(serde_json::Value::Null)
+            }
+        }
+
+        Ok(data)
+    }
+
+    pub fn get_array_value(&self, col_index: usize) -> Result<Option<Vec<serde_json::Value>>, BQError> {
+        let json_value = self.get_json_value(col_index)?;
+        match json_value {
+            None => Ok(None),
+            Some(json_value) => match json_value.to_owned() {
+                serde_json::Value::Array(_value) => {
+                    let table_schema = self.query_response.schema.as_ref().expect("Expecting a schema");
+                    let field_schema = table_schema.fields.as_ref().and_then(|f| f.get(col_index)).expect("Expecting schema fields");
+
+                    let cells: Vec<TableCell> = serde_json::from_value(json_value)
+                        .map_err(BQError::SerializationError)?;
+
+                    Ok(Some(ResultSet::parse_array_value(field_schema, cells)?))
+                },
+                _ => Err(BQError::InvalidColumnType {
+                    col_index,
+                    col_type: ResultSet::json_type(&json_value),
+                    type_requested: "Array".into(),
+                }),
+            },
+        }
+    }
+
+    pub fn get_array_value_by_name(&self, col_name: &str) -> Result<Option<Vec<serde_json::Value>>, BQError> {
+        let col_pos = self.fields.get(col_name);
+        match col_pos {
+            None => Err(BQError::InvalidColumnName {
+                col_name: col_name.into(),
+            }),
+            Some(col_pos) => self.get_array_value(*col_pos),
+        }
+    }
+
+    pub fn get_timestamp_value(&self, col_index: usize) -> Result<Option<DateTime<Utc>>, BQError> {
+        let ms = self.get_f64(col_index)?;
+        if let Some(ms) = ms {
+            Ok(Some(Utc.timestamp_nanos(
+                (ms * 1000.0) as i64
+            )))
+        } else {
+            Ok(None)
+        }
+    }
+
+    pub fn get_timestamp_value_by_name(&self, col_name: &str) -> Result<Option<DateTime<Utc>>, BQError> {
+        let col_index = self.fields.get(col_name);
+        match col_index {
+            None => Err(BQError::InvalidColumnName {
+                col_name: col_name.into(),
+            }),
+            Some(col_index) => self.get_timestamp_value(*col_index),
         }
     }
 
