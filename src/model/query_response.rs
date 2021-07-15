@@ -1,16 +1,16 @@
 use crate::error::BQError;
 use crate::model::error_proto::ErrorProto;
+use crate::model::field_type::FieldType;
 use crate::model::get_query_results_response::GetQueryResultsResponse;
 use crate::model::job_reference::JobReference;
+use crate::model::table_cell::TableCell;
+use crate::model::table_field_schema::TableFieldSchema;
 use crate::model::table_row::TableRow;
 use crate::model::table_schema::TableSchema;
+use chrono::{DateTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use crate::model::table_field_schema::TableFieldSchema;
-use crate::model::table_cell::TableCell;
-use crate::model::field_type::FieldType;
-use chrono::{DateTime, Utc, TimeZone};
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -307,10 +307,13 @@ impl ResultSet {
             Some(json_value) => match json_value.to_owned() {
                 serde_json::Value::Object(_value) => {
                     let table_schema = self.query_response.schema.as_ref().expect("Expecting a schema");
-                    let fields_schema = table_schema.fields.as_ref().and_then(|f| f.get(col_index)).expect("Expecting schema fields");
+                    let fields_schema = table_schema
+                        .fields
+                        .as_ref()
+                        .and_then(|f| f.get(col_index))
+                        .expect("Expecting schema fields");
 
-                    let row: TableRow = serde_json::from_value(json_value)
-                        .map_err(BQError::SerializationError)?;
+                    let row: TableRow = serde_json::from_value(json_value).map_err(BQError::SerializationError)?;
                     Ok(Some(ResultSet::parse_struct_value(fields_schema, &row)?))
                 }
                 _ => Err(BQError::InvalidColumnType {
@@ -329,47 +332,35 @@ impl ResultSet {
 
         for field in fields_schema {
             if row.columns.is_none() {
-                data.insert(
-                    field.name.to_owned(),
-                    serde_json::Value::Null,
-                );
-                continue
+                data.insert(field.name.to_owned(), serde_json::Value::Null);
+                continue;
             }
 
-            let r: serde_json::Value = row.columns
+            let r: serde_json::Value = row
+                .columns
                 .as_ref()
                 .and_then(|cols| cols.get(0))
                 .and_then(|col| col.value.clone())
                 .unwrap_or_default();
 
             if r.is_null() {
-                data.insert(
-                    field.name.to_owned(),
-                    serde_json::Value::Null,
-                );
-                continue
+                data.insert(field.name.to_owned(), serde_json::Value::Null);
+                continue;
             }
 
             if field.mode.to_owned().unwrap_or_default().eq("REPEATED") {
-                let cells: Vec<TableCell> = serde_json::from_value(r.to_owned())
-                    .map_err(BQError::SerializationError)?;
+                let cells: Vec<TableCell> =
+                    serde_json::from_value(r.to_owned()).map_err(BQError::SerializationError)?;
 
                 data.insert(
                     field.name.to_owned(),
                     serde_json::Value::Array(ResultSet::parse_array_value(&field, cells)?),
                 );
             } else if field.r#type == FieldType::Record {
-                let c_row: TableRow = serde_json::from_value(r.to_owned())
-                    .map_err(BQError::SerializationError)?;
-                data.insert(
-                    field.name.to_owned(),
-                    ResultSet::parse_struct_value(&field, &c_row)?,
-                );
+                let c_row: TableRow = serde_json::from_value(r.to_owned()).map_err(BQError::SerializationError)?;
+                data.insert(field.name.to_owned(), ResultSet::parse_struct_value(&field, &c_row)?);
             } else {
-                data.insert(
-                    field.name.to_owned(),
-                    r,
-                );
+                data.insert(field.name.to_owned(), r);
             }
         }
 
@@ -397,8 +388,7 @@ impl ResultSet {
         for cell in cells {
             if let Some(v) = cell.value {
                 if let Some(record_schema) = record_schema {
-                    let row: TableRow = serde_json::from_value(v.to_owned())
-                        .map_err(BQError::SerializationError)?;
+                    let row: TableRow = serde_json::from_value(v.to_owned()).map_err(BQError::SerializationError)?;
 
                     data.push(ResultSet::parse_struct_value(record_schema, &row)?);
                 } else {
@@ -419,13 +409,17 @@ impl ResultSet {
             Some(json_value) => match json_value.to_owned() {
                 serde_json::Value::Array(_value) => {
                     let table_schema = self.query_response.schema.as_ref().expect("Expecting a schema");
-                    let field_schema = table_schema.fields.as_ref().and_then(|f| f.get(col_index)).expect("Expecting schema fields");
+                    let field_schema = table_schema
+                        .fields
+                        .as_ref()
+                        .and_then(|f| f.get(col_index))
+                        .expect("Expecting schema fields");
 
-                    let cells: Vec<TableCell> = serde_json::from_value(json_value)
-                        .map_err(BQError::SerializationError)?;
+                    let cells: Vec<TableCell> =
+                        serde_json::from_value(json_value).map_err(BQError::SerializationError)?;
 
                     Ok(Some(ResultSet::parse_array_value(field_schema, cells)?))
-                },
+                }
                 _ => Err(BQError::InvalidColumnType {
                     col_index,
                     col_type: ResultSet::json_type(&json_value),
@@ -448,9 +442,7 @@ impl ResultSet {
     pub fn get_timestamp_value(&self, col_index: usize) -> Result<Option<DateTime<Utc>>, BQError> {
         let ms = self.get_f64(col_index)?;
         if let Some(ms) = ms {
-            Ok(Some(Utc.timestamp_nanos(
-                (ms * 1000.0) as i64
-            )))
+            Ok(Some(Utc.timestamp_nanos((ms * 1000.0) as i64)))
         } else {
             Ok(None)
         }
