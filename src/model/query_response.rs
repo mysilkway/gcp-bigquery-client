@@ -456,9 +456,9 @@ impl ResultSet {
     }
 
     pub fn get_timestamp(&self, col_index: usize) -> Result<Option<DateTime<Utc>>, BQError> {
-        let ms = self.get_f64(col_index)?;
-        if let Some(ms) = ms {
-            Ok(Some(Utc.timestamp_nanos((ms * 1000.0) as i64)))
+        let s = self.get_f64(col_index)?;
+        if let Some(s) = s {
+            Ok(Some(Utc.timestamp_nanos((s * 1000000.0) as i64)))
         } else {
             Ok(None)
         }
