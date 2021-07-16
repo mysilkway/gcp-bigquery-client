@@ -390,7 +390,7 @@ impl ResultSet {
 
     fn parse_array_value(field: &TableFieldSchema, cells: Vec<TableCell>) -> Result<Vec<serde_json::Value>, BQError> {
         let record_schema = if field.r#type == FieldType::Record {
-            field.fields.as_ref().and_then(|f| f.get(0))
+            Some(field)
         } else {
             None
         };
