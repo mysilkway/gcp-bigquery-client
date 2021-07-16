@@ -41,6 +41,9 @@ pub enum BQError {
 
     #[error("Json serialization error (error: {0})")]
     SerializationError(#[from] serde_json::Error),
+
+    #[error("Unexpected error : {msg}")]
+    UnexpectedError { msg: String },
 }
 
 #[derive(Debug, Deserialize)]

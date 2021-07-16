@@ -307,12 +307,14 @@ impl ResultSet {
             None => Ok(None),
             Some(json_value) => match json_value.to_owned() {
                 serde_json::Value::Object(_value) => {
-                    let table_schema = self.query_response.schema.as_ref().expect("Expecting a schema");
-                    let fields_schema = table_schema
-                        .fields
-                        .as_ref()
-                        .and_then(|f| f.get(col_index))
-                        .expect("Expecting schema fields");
+                    let table_schema = self.query_response.schema.as_ref().ok_or(BQError::UnexpectedError {
+                        msg: "Expecting a schema".to_string(),
+                    })?;
+                    let fields_schema = table_schema.fields.as_ref().and_then(|f| f.get(col_index)).ok_or(
+                        BQError::UnexpectedError {
+                            msg: "Expecting schema fields".to_string(),
+                        },
+                    )?;
 
                     let row: TableRow = serde_json::from_value(json_value).map_err(BQError::SerializationError)?;
                     Ok(Some(ResultSet::parse_struct_value(fields_schema, &row)?))
@@ -327,7 +329,9 @@ impl ResultSet {
     }
 
     fn parse_struct_value(field: &TableFieldSchema, row: &TableRow) -> Result<serde_json::Value, BQError> {
-        let fields_schema = field.fields.as_ref().expect("Expecting a schema");
+        let fields_schema = field.fields.as_ref().ok_or(BQError::UnexpectedError {
+            msg: "Expecting a schema".to_string(),
+        })?;
 
         let mut data = serde_json::Map::new();
 
@@ -400,7 +404,6 @@ impl ResultSet {
             if let Some(v) = cell.value {
                 if let Some(record_schema) = record_schema {
                     let row: TableRow = serde_json::from_value(v.to_owned()).map_err(BQError::SerializationError)?;
-
                     data.push(ResultSet::parse_struct_value(record_schema, &row)?);
                 } else {
                     data.push(v)
@@ -419,12 +422,14 @@ impl ResultSet {
             None => Ok(None),
             Some(json_value) => match json_value.to_owned() {
                 serde_json::Value::Array(_value) => {
-                    let table_schema = self.query_response.schema.as_ref().expect("Expecting a schema");
-                    let field_schema = table_schema
-                        .fields
-                        .as_ref()
-                        .and_then(|f| f.get(col_index))
-                        .expect("Expecting schema fields");
+                    let table_schema = self.query_response.schema.as_ref().ok_or(BQError::UnexpectedError {
+                        msg: "Expecting a schema".to_string(),
+                    })?;
+                    let field_schema = table_schema.fields.as_ref().and_then(|f| f.get(col_index)).ok_or(
+                        BQError::UnexpectedError {
+                            msg: "Expecting schema fields".to_string(),
+                        },
+                    )?;
 
                     let cells: Vec<TableCell> =
                         serde_json::from_value(json_value).map_err(BQError::SerializationError)?;
@@ -450,7 +455,7 @@ impl ResultSet {
         }
     }
 
-    pub fn get_timestamp_value(&self, col_index: usize) -> Result<Option<DateTime<Utc>>, BQError> {
+    pub fn get_timestamp(&self, col_index: usize) -> Result<Option<DateTime<Utc>>, BQError> {
         let ms = self.get_f64(col_index)?;
         if let Some(ms) = ms {
             Ok(Some(Utc.timestamp_nanos((ms * 1000.0) as i64)))
@@ -459,13 +464,13 @@ impl ResultSet {
         }
     }
 
-    pub fn get_timestamp_value_by_name(&self, col_name: &str) -> Result<Option<DateTime<Utc>>, BQError> {
+    pub fn get_timestamp_by_name(&self, col_name: &str) -> Result<Option<DateTime<Utc>>, BQError> {
         let col_index = self.fields.get(col_name);
         match col_index {
             None => Err(BQError::InvalidColumnName {
                 col_name: col_name.into(),
             }),
-            Some(col_index) => self.get_timestamp_value(*col_index),
+            Some(col_index) => self.get_timestamp(*col_index),
         }
     }
 
