@@ -335,7 +335,7 @@ impl ResultSet {
 
         let mut data = serde_json::Map::new();
 
-        for field in fields_schema {
+        for (f_idx, field) in fields_schema.iter().enumerate() {
             if row.columns.is_none() {
                 data.insert(field.name.to_owned(), serde_json::Value::Null);
                 continue;
@@ -344,7 +344,7 @@ impl ResultSet {
             let r: serde_json::Value = row
                 .columns
                 .as_ref()
-                .and_then(|cols| cols.get(0))
+                .and_then(|cols| cols.get(f_idx))
                 .and_then(|col| col.value.clone())
                 .unwrap_or_default();
 
