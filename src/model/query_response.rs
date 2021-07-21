@@ -174,29 +174,29 @@ impl ResultSet {
         }
     }
 
+    fn parse_f64_value(v: &serde_json::Value) -> Result<Option<f64>, BQError> {
+        match v {
+            serde_json::Value::Number(value) => Ok(value.as_f64()),
+            serde_json::Value::String(value) => {
+                let value: Result<f64, _> = value.parse();
+                match &value {
+                    Err(_) => Err(BQError::UnexpectedError {
+                        msg: "this is not a float value".to_string(),
+                    }),
+                    Ok(value) => Ok(Some(*value)),
+                }
+            }
+            _ => Err(BQError::UnexpectedError {
+                msg: "this is not a float value".to_string(),
+            }),
+        }
+    }
+
     pub fn get_f64(&self, col_index: usize) -> Result<Option<f64>, BQError> {
         let json_value = self.get_json_value(col_index)?;
         match &json_value {
             None => Ok(None),
-            Some(json_value) => match json_value {
-                serde_json::Value::Number(value) => Ok(value.as_f64()),
-                serde_json::Value::String(value) => {
-                    let value: Result<f64, _> = value.parse();
-                    match &value {
-                        Err(_) => Err(BQError::InvalidColumnType {
-                            col_index,
-                            col_type: ResultSet::json_type(json_value),
-                            type_requested: "F64".into(),
-                        }),
-                        Ok(value) => Ok(Some(*value)),
-                    }
-                }
-                _ => Err(BQError::InvalidColumnType {
-                    col_index,
-                    col_type: ResultSet::json_type(&json_value),
-                    type_requested: "F64".into(),
-                }),
-            },
+            Some(json_value) => ResultSet::parse_f64_value(json_value),
         }
     }
 
@@ -374,6 +374,16 @@ impl ResultSet {
                 let value = serde_json::Number::from_str(r.as_str().unwrap_or_default())
                     .map_err(BQError::SerializationError)?;
                 data.insert(field.name.to_owned(), serde_json::Value::Number(value));
+            } else if field.r#type == FieldType::Timestamp {
+                let value = ResultSet::parse_f64_value(&r)?;
+                if let Some(v) = value {
+                    data.insert(
+                        field.name.to_owned(),
+                        serde_json::Value::String(ResultSet::parse_timestamp_value(v).to_rfc3339()),
+                    );
+                } else {
+                    data.insert(field.name.to_owned(), serde_json::Value::Null);
+                }
             } else {
                 data.insert(field.name.to_owned(), r);
             }
@@ -405,6 +415,25 @@ impl ResultSet {
                 if let Some(record_schema) = record_schema {
                     let row: TableRow = serde_json::from_value(v.to_owned()).map_err(BQError::SerializationError)?;
                     data.push(ResultSet::parse_struct_value(record_schema, &row)?);
+                } else if field.r#type == FieldType::Integer
+                    || field.r#type == FieldType::Int64
+                    || field.r#type == FieldType::Float
+                    || field.r#type == FieldType::Float64
+                    || field.r#type == FieldType::Numeric
+                    || field.r#type == FieldType::Bignumeric
+                {
+                    let value = serde_json::Number::from_str(v.as_str().unwrap_or_default())
+                        .map_err(BQError::SerializationError)?;
+                    data.push(serde_json::Value::Number(value));
+                } else if field.r#type == FieldType::Timestamp {
+                    let value = ResultSet::parse_f64_value(&v)?;
+                    if let Some(v) = value {
+                        data.push(serde_json::Value::String(
+                            ResultSet::parse_timestamp_value(v).to_rfc3339(),
+                        ))
+                    } else {
+                        data.push(serde_json::Value::Null)
+                    }
                 } else {
                     data.push(v)
                 }
@@ -455,10 +484,14 @@ impl ResultSet {
         }
     }
 
+    pub fn parse_timestamp_value(v: f64) -> DateTime<Utc> {
+        Utc.timestamp_nanos((v * 1000000000.0) as i64)
+    }
+
     pub fn get_timestamp(&self, col_index: usize) -> Result<Option<DateTime<Utc>>, BQError> {
         let s = self.get_f64(col_index)?;
         if let Some(s) = s {
-            Ok(Some(Utc.timestamp_nanos((s * 1000000000.0) as i64)))
+            Ok(Some(ResultSet::parse_timestamp_value(s)))
         } else {
             Ok(None)
         }
