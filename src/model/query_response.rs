@@ -13,7 +13,7 @@ use serde_json::Value;
 use std::collections::HashMap;
 use std::str::FromStr;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryResponse {
     /// Whether the query result was fetched from the query cache.
