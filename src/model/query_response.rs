@@ -210,29 +210,29 @@ impl ResultSet {
         }
     }
 
+    fn parse_bool_value(v: &serde_json::Value) -> Result<Option<bool>, BQError> {
+        match v {
+            serde_json::Value::Bool(value) => Ok(Some(*value)),
+            serde_json::Value::String(value) => {
+                let value: Result<bool, _> = value.parse();
+                match &value {
+                    Err(_) => Err(BQError::UnexpectedError {
+                        msg: "this is not a bool value".to_string(),
+                    }),
+                    Ok(value) => Ok(Some(*value)),
+                }
+            }
+            _ => Err(BQError::UnexpectedError {
+                msg: "this is not a bool value".to_string(),
+            }),
+        }
+    }
+
     pub fn get_bool(&self, col_index: usize) -> Result<Option<bool>, BQError> {
         let json_value = self.get_json_value(col_index)?;
         match &json_value {
             None => Ok(None),
-            Some(json_value) => match json_value {
-                serde_json::Value::Bool(value) => Ok(Some(*value)),
-                serde_json::Value::String(value) => {
-                    let value: Result<bool, _> = value.parse();
-                    match &value {
-                        Err(_) => Err(BQError::InvalidColumnType {
-                            col_index,
-                            col_type: ResultSet::json_type(json_value),
-                            type_requested: "Bool".into(),
-                        }),
-                        Ok(value) => Ok(Some(*value)),
-                    }
-                }
-                _ => Err(BQError::InvalidColumnType {
-                    col_index,
-                    col_type: ResultSet::json_type(&json_value),
-                    type_requested: "Bool".into(),
-                }),
-            },
+            Some(json_value) => ResultSet::parse_bool_value(json_value),
         }
     }
 
@@ -384,6 +384,16 @@ impl ResultSet {
                 } else {
                     data.insert(field.name.to_owned(), serde_json::Value::Null);
                 }
+            } else if field.r#type == FieldType::Bool {
+                let value = ResultSet::parse_bool_value(&r)?;
+                if let Some(v) = value {
+                    data.insert(
+                        field.name.to_owned(),
+                        serde_json::Value::Bool(v),
+                    );
+                } else {
+                    data.insert(field.name.to_owned(), serde_json::Value::Null);
+                }
             } else {
                 data.insert(field.name.to_owned(), r);
             }
@@ -431,6 +441,13 @@ impl ResultSet {
                         data.push(serde_json::Value::String(
                             ResultSet::parse_timestamp_value(v).to_rfc3339(),
                         ))
+                    } else {
+                        data.push(serde_json::Value::Null)
+                    }
+                } else if field.r#type == FieldType::Bool {
+                    let value = ResultSet::parse_bool_value(&v)?;
+                    if let Some(v) = value {
+                        data.push(serde_json::Value::Bool(v));
                     } else {
                         data.push(serde_json::Value::Null)
                     }
