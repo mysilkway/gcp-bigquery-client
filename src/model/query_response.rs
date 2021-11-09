@@ -384,13 +384,10 @@ impl ResultSet {
                 } else {
                     data.insert(field.name.to_owned(), serde_json::Value::Null);
                 }
-            } else if field.r#type == FieldType::Bool {
+            } else if field.r#type == FieldType::Bool || field.r#type == FieldType::Boolean {
                 let value = ResultSet::parse_bool_value(&r)?;
                 if let Some(v) = value {
-                    data.insert(
-                        field.name.to_owned(),
-                        serde_json::Value::Bool(v),
-                    );
+                    data.insert(field.name.to_owned(), serde_json::Value::Bool(v));
                 } else {
                     data.insert(field.name.to_owned(), serde_json::Value::Null);
                 }
@@ -444,7 +441,7 @@ impl ResultSet {
                     } else {
                         data.push(serde_json::Value::Null)
                     }
-                } else if field.r#type == FieldType::Bool {
+                } else if field.r#type == FieldType::Bool || field.r#type == FieldType::Boolean {
                     let value = ResultSet::parse_bool_value(&v)?;
                     if let Some(v) = value {
                         data.push(serde_json::Value::Bool(v));
