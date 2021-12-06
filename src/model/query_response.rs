@@ -361,7 +361,7 @@ impl ResultSet {
                     field.name.to_owned(),
                     serde_json::Value::Array(ResultSet::parse_array_value(&field, cells)?),
                 );
-            } else if field.r#type == FieldType::Record {
+            } else if field.r#type == FieldType::Record || field.r#type == FieldType::Struct {
                 let c_row: TableRow = serde_json::from_value(r.to_owned()).map_err(BQError::SerializationError)?;
                 data.insert(field.name.to_owned(), ResultSet::parse_struct_value(&field, &c_row)?);
             } else if field.r#type == FieldType::Integer
@@ -410,7 +410,7 @@ impl ResultSet {
     }
 
     fn parse_array_value(field: &TableFieldSchema, cells: Vec<TableCell>) -> Result<Vec<serde_json::Value>, BQError> {
-        let record_schema = if field.r#type == FieldType::Record {
+        let record_schema = if field.r#type == FieldType::Record || field.r#type == FieldType::Struct {
             Some(field)
         } else {
             None
