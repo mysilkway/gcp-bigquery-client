@@ -27,7 +27,7 @@ serde = "1.0"
 serde_json = "1.0"
 log = "0.4"
 chrono = "0.4"
-backoff = { verion = "0.4", features = ["async-std"] }
+backoff = { version = "0.4", features = ["async-std"] }
 
 [dev-dependencies]
 tokio-test = "0.2"
