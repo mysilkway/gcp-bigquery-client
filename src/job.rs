@@ -11,6 +11,8 @@ use crate::model::job_list::JobList;
 use crate::model::query_request::QueryRequest;
 use crate::model::query_response::{QueryResponse, ResultSet};
 use crate::{process_response, urlencode};
+use backoff::future::retry;
+use backoff::ExponentialBackoff;
 
 /// A job API handler.
 pub struct JobApi {
@@ -123,6 +125,33 @@ impl JobApi {
 
         let get_query_results_response: GetQueryResultsResponse = process_response(resp).await?;
         Ok(get_query_results_response)
+    }
+
+    /// RPC to get the results of a query job with backoff to wait jobComplete to true.
+    /// # Arguments
+    /// * `project_id` - Project ID of the query request.
+    /// * `job_id` - Job ID of the query job.
+    /// * `parameters` - The query parameters for jobs.getQueryResults.
+    pub async fn get_query_results_with_backoff(
+        &self,
+        project_id: &str,
+        job_id: &str,
+        parameters: GetQueryResultsParameters,
+    ) -> Result<GetQueryResultsResponse, BQError> {
+        retry(ExponentialBackoff::default(), || async {
+            let params = parameters.clone();
+            let get_query_results_response = self
+                .get_query_results(project_id, job_id, params)
+                .await
+                .map_err(backoff::Error::Permanent)?;
+            if get_query_results_response.job_complete != Some(true) {
+                return Err(backoff::Error::transient(BQError::UnexpectedError {
+                    msg: "job is not completed".to_string(),
+                }));
+            }
+            Ok(get_query_results_response)
+        })
+        .await
     }
 
     /// Returns information about a specific job. Job information is available for a six month
