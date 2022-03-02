@@ -46,6 +46,11 @@ impl TableDataInsertAllRequest {
         Ok(())
     }
 
+    pub fn add_rows(&mut self, objects: Vec<TableDataInsertAllRequestRows>) -> Result<(), BQError> {
+        self.rows.extend(objects);
+        Ok(())
+    }
+
     pub fn skip_invalid_rows(&mut self) -> &mut Self {
         self.skip_invalid_rows = true;
         self
@@ -54,5 +59,17 @@ impl TableDataInsertAllRequest {
     pub fn template_suffix(&mut self, suffix: impl Into<String>) -> &mut Self {
         self.template_suffix = Some(suffix.into());
         self
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.rows.is_empty()
+    }
+
+    pub fn len(&self) -> usize {
+        self.rows.len()
+    }
+
+    pub fn clear(&mut self) {
+        self.rows.clear()
     }
 }

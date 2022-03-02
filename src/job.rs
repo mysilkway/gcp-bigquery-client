@@ -172,11 +172,10 @@ impl JobApi {
         let mut request_builder = self.client.get(req_url.as_str());
 
         if let Some(location) = location {
-            request_builder = request_builder.query(&["location", location]);
+            request_builder = request_builder.query(&[("location", location)]);
         }
 
         let access_token = self.sa_auth.access_token().await?;
-
         let request = request_builder.bearer_auth(access_token).build()?;
 
         let resp = self.client.execute(request).await?;
@@ -207,7 +206,7 @@ impl JobApi {
         let mut request_builder = self.client.post(req_url.as_str());
 
         if let Some(location) = location {
-            request_builder = request_builder.query(&["location", location]);
+            request_builder = request_builder.query(&[("location", location)]);
         }
 
         let access_token = self.sa_auth.access_token().await?;
@@ -263,11 +262,8 @@ mod test {
 
         let client = Client::from_service_account_key_file(sa_key).await;
 
-        // Delete the dataset if needed
-        let result = client.dataset().delete(project_id, dataset_id, true).await;
-        if let Ok(_) = result {
-            println!("Removed previous dataset '{}'", dataset_id);
-        }
+        client.table().delete_if_exists(project_id, dataset_id, table_id).await;
+        client.dataset().delete_if_exists(project_id, dataset_id, true).await;
 
         // Create dataset
         let created_dataset = client.dataset().create(Dataset::new(project_id, dataset_id)).await?;
@@ -374,10 +370,12 @@ mod test {
             },
         )?;
 
-        client
+        let result = client
             .tabledata()
             .insert_all(project_id, dataset_id, table_id, insert_request)
-            .await?;
+            .await;
+
+        assert!(result.is_ok(), "{:?}", result);
 
         // Query
         let mut rs = client

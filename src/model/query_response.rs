@@ -144,20 +144,18 @@ impl ResultSet {
             None => Ok(None),
             Some(json_value) => match json_value {
                 serde_json::Value::Number(value) => Ok(value.as_i64()),
-                serde_json::Value::String(value) => {
-                    let value: Result<i64, _> = value.parse();
-                    match &value {
-                        Err(_) => Err(BQError::InvalidColumnType {
-                            col_index,
-                            col_type: ResultSet::json_type(json_value),
-                            type_requested: "I64".into(),
-                        }),
-                        Ok(value) => Ok(Some(*value)),
-                    }
-                }
+                serde_json::Value::String(value) => match (value.parse::<i64>(), value.parse::<f64>()) {
+                    (Ok(v), _) => Ok(Some(v)),
+                    (Err(_), Ok(v)) => Ok(Some(v as i64)),
+                    _ => Err(BQError::InvalidColumnType {
+                        col_index,
+                        col_type: ResultSet::json_type(json_value),
+                        type_requested: "I64".into(),
+                    }),
+                },
                 _ => Err(BQError::InvalidColumnType {
                     col_index,
-                    col_type: ResultSet::json_type(&json_value),
+                    col_type: ResultSet::json_type(json_value),
                     type_requested: "I64".into(),
                 }),
             },
@@ -359,11 +357,11 @@ impl ResultSet {
 
                 data.insert(
                     field.name.to_owned(),
-                    serde_json::Value::Array(ResultSet::parse_array_value(&field, cells)?),
+                    serde_json::Value::Array(ResultSet::parse_array_value(field, cells)?),
                 );
             } else if field.r#type == FieldType::Record || field.r#type == FieldType::Struct {
                 let c_row: TableRow = serde_json::from_value(r.to_owned()).map_err(BQError::SerializationError)?;
-                data.insert(field.name.to_owned(), ResultSet::parse_struct_value(&field, &c_row)?);
+                data.insert(field.name.to_owned(), ResultSet::parse_struct_value(field, &c_row)?);
             } else if field.r#type == FieldType::Integer
                 || field.r#type == FieldType::Int64
                 || field.r#type == FieldType::Float

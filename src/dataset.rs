@@ -359,6 +359,7 @@ impl DatasetApi {
 }
 
 /// A list of options used to create a dataset API handler.
+#[derive(Default)]
 pub struct ListOptions {
     max_results: Option<u64>,
     page_token: Option<String>,
@@ -395,17 +396,6 @@ impl ListOptions {
     }
 }
 
-impl Default for ListOptions {
-    fn default() -> Self {
-        Self {
-            max_results: None,
-            page_token: None,
-            all: None,
-            filter: None,
-        }
-    }
-}
-
 #[cfg(test)]
 mod test {
     use crate::dataset::ListOptions;
@@ -422,7 +412,7 @@ mod test {
 
         // Delete the dataset if needed
         let result = client.dataset().delete(project_id, dataset_id, true).await;
-        if let Ok(_) = result {
+        if result.is_ok() {
             println!("Removed previous dataset '{}'", dataset_id);
         }
 

@@ -1,20 +1,22 @@
-GCP BigQuery Client (Rust)
-==========================
+GCP BigQuery Client
+===================
 
 [<img alt="github" src="https://img.shields.io/badge/github-lquerel/gcp_bigquery_client-8da0cb?style=for-the-badge&labelColor=555555&logo=github" height="20">](https://github.com/lquerel/gcp-bigquery-client)
 [<img alt="crates.io" src="https://img.shields.io/crates/v/gcp_bigquery_client.svg?style=for-the-badge&color=fc8d62&logo=rust" height="20">](https://crates.io/crates/gcp-bigquery-client)
 [<img alt="docs.rs" src="https://img.shields.io/badge/docs.rs-gcp_bigquery_client-66c2a5?style=for-the-badge&labelColor=555555&logoColor=white&logo=data:image/svg+xml;base64,PHN2ZyByb2xlPSJpbWciIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyIgdmlld0JveD0iMCAwIDUxMiA1MTIiPjxwYXRoIGZpbGw9IiNmNWY1ZjUiIGQ9Ik00ODguNiAyNTAuMkwzOTIgMjE0VjEwNS41YzAtMTUtOS4zLTI4LjQtMjMuNC0zMy43bC0xMDAtMzcuNWMtOC4xLTMuMS0xNy4xLTMuMS0yNS4zIDBsLTEwMCAzNy41Yy0xNC4xIDUuMy0yMy40IDE4LjctMjMuNCAzMy43VjIxNGwtOTYuNiAzNi4yQzkuMyAyNTUuNSAwIDI2OC45IDAgMjgzLjlWMzk0YzAgMTMuNiA3LjcgMjYuMSAxOS45IDMyLjJsMTAwIDUwYzEwLjEgNS4xIDIyLjEgNS4xIDMyLjIgMGwxMDMuOS01MiAxMDMuOSA1MmMxMC4xIDUuMSAyMi4xIDUuMSAzMi4yIDBsMTAwLTUwYzEyLjItNi4xIDE5LjktMTguNiAxOS45LTMyLjJWMjgzLjljMC0xNS05LjMtMjguNC0yMy40LTMzLjd6TTM1OCAyMTQuOGwtODUgMzEuOXYtNjguMmw4NS0zN3Y3My4zek0xNTQgMTA0LjFsMTAyLTM4LjIgMTAyIDM4LjJ2LjZsLTEwMiA0MS40LTEwMi00MS40di0uNnptODQgMjkxLjFsLTg1IDQyLjV2LTc5LjFsODUtMzguOHY3NS40em0wLTExMmwtMTAyIDQxLjQtMTAyLTQxLjR2LS42bDEwMi0zOC4yIDEwMiAzOC4ydi42em0yNDAgMTEybC04NSA0Mi41di03OS4xbDg1LTM4Ljh2NzUuNHptMC0xMTJsLTEwMiA0MS40LTEwMi00MS40di0uNmwxMDItMzguMiAxMDIgMzguMnYuNnoiPjwvcGF0aD48L3N2Zz4K" height="20">](https://docs.rs/gcp-bigquery-client)
 [<img alt="build status" src="https://img.shields.io/github/workflow/status/lquerel/gcp-bigquery-client/Rust/main?style=for-the-badge" height="20">](https://github.com/lquerel/gcp-bigquery-client/actions?query=branch%3Amain)
 
-> Warning the version 0.9 is incompatible with the previous versions. 
-> Some method signatures have been changed to remove redundant parameters. 
-
-An ergonomic async client library for GCP BigQuery.
+An ergonomic Rust async client library for GCP BigQuery.
 * Support all BigQuery API endpoints (not all covered by unit tests yet)
-* Support Service Account Key authentication and other yup-oauth2 mechanisms
+* Support Service Account Key authentication, workload identity and other yup-oauth2 mechanisms
 * Create tables and rows via builder patterns
 * Persist complex Rust structs in structured BigQuery tables
 * Async API
+
+Features:
+- rust-tls (default): RUSTLS-based
+- native-tls: OpenSSL-based
+
 
 <br>
 Contributions are welcome.
@@ -23,7 +25,10 @@ Please post your suggestions and ideas on this GitHub [discussion section](https
 
 ---
 
-## ExampleThis example performs the following operations:
+## Example
+
+This example performs the following operations:
+
 * Load a set of environment variables to set `$PROJECT_ID`, `$DATASET_ID`, `$TABLE_ID` and `$GOOGLE_APPLICATION_CREDENTIALS`
 * Init the BigQuery client
 * Create a dataset in the GCP project `$PROJECT_ID`
@@ -193,6 +198,8 @@ rows are based on a regular Rust struct implementing the trait Serialize.
     // Delete the dataset previously created
     client.dataset().delete(project_id, dataset_id, true).await?;
 ```
+
+An example of BigQuery load job can be found in the examples directory.
 
 ## Status
 

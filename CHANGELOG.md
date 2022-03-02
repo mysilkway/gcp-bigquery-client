@@ -2,14 +2,35 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.11.0] - 2022-01-03
+
+### Fix
+
+- Fix QueryParameter type declaration (Thanks to @newapplesho)
+
+## [0.10.2] - 2021-10-21
+
+### Fix
+
+- Fix 2 issues in the job API (Thanks to @nixxholas)
+
+## [0.10.1] - 2021-10-31
+
+### Added
+
+- Add a BigQuery load job example in the examples directory.
+
 ## [0.10.0] - 2021-10-09
 
 ### Added
 
+- 2 features `native-tls` and `rust-tls` to respectively use OpenSSL or Rust TLS.
+- Add methods `is_empty`, `len`, `clear` to `TableDataInsertAllRequest`
 - Add method `add_rows` to `TableDataInsertAllRequest` (thanks @nixxholas)
 - Bump version for yup-oauth2 v6 (thanks @JamesHinshelwood)
-- Implement the Default trait for most of the structures in the model sub-directory
-- Implement the Clone trait for most of the structures in the model sub-directory
+- Implement `Default` trait for most of the structures in the model sub-directory
+- Implement `Clone` trait for most of the structures in the model sub-directory
+- Implement `Display` trait for `ErrorProto` and `TableDataInsertAllResponseInsertErrors`
 
 ## [0.9.3] - 2021-08-31
 
