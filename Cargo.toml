@@ -1,6 +1,6 @@
 [package]
 name = "gcp-bigquery-client"
-version = "0.11.2"
+version = "0.11.3"
 authors = ["Laurent Querel <laurent.querel@gmail.com>"]
 edition = "2018"
 license = "MIT OR Apache-2.0"
@@ -21,7 +21,7 @@ native-tls = ["reqwest/native-tls"]
 rust-tls = ["reqwest/rustls-tls"]
 
 [dependencies]
-yup-oauth2 = "6"
+yup-oauth2 = "7.0"
 hyper = {version="0.14", features = ["http1"]}
 hyper-rustls = {version="0.23", features = ["native-tokio"]}
 thiserror = "1"
@@ -36,5 +36,5 @@ backoff = { version = "0.4", features = ["async-std"] }
 
 [dev-dependencies]
 tokio-test = "0.4"
-cloud-storage = {version="0.10", features = ["global-client"]}
+cloud-storage = {version="0.11", features = ["global-client"]}
 rand = "0.8"
